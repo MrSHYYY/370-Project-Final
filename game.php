@@ -121,6 +121,11 @@ function savePlayerScores($conn, $game_id, $team_id, $players, $is_cricket) {
         if ($is_cricket) {
             $runs = (int) ($players['runs'][$index] ?? 0);
             $overs = (float) ($players['overs'][$index] ?? 0);
+            
+            if (round(($overs - floor($overs)) * 10) > 5) {
+                $overs = (float) (floor($overs) + 1);
+            }
+
             $wickets = (int) ($players['wickets'][$index] ?? 0);
             $half_centuries = (int) ($players['half_centuries'][$index] ?? 0);
             $centuries = (int) ($players['centuries'][$index] ?? 0);
@@ -218,6 +223,58 @@ function savePastScore($conn, $game_id, $user_id, $sport_id, $team_a_id, $team_b
     $stmt->close();
 }
 
+function getPlayerScores($conn, $game_id, $team_id) {
+    $stmt = $conn->prepare("SELECT players.player_name, player_scores.*
+                            FROM player_scores
+                            INNER JOIN players ON player_scores.player_id = players.player_id
+                            WHERE player_scores.game_id = ? AND players.team_id = ?
+                            ORDER BY player_scores.score DESC, players.player_name ASC");
+    $stmt->bind_param("ii", $game_id, $team_id);
+    $stmt->execute();
+    return $stmt->get_result();
+}
+
+function renderPlayerScores($player_scores, $is_cricket) {
+    if ($player_scores->num_rows === 0) {
+        return;
+    }
+
+    echo "<div class='player-table-container'>";
+    echo "<table class='player-score-table'>";
+    echo "<thead><tr>";
+    echo "<th>#</th>";
+    echo "<th>Player</th>";
+    if ($is_cricket) {
+        echo "<th>Runs</th><th>Overs</th><th>W</th><th>50s</th><th>100s</th>";
+    } else {
+        echo "<th>Goals</th><th>YC</th><th>RC</th>";
+    }
+    echo "</tr></thead>";
+    echo "<tbody>";
+
+    $rank = 1;
+    while ($player = $player_scores->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td><span class='player-rank-mini'>{$rank}</span></td>";
+        echo "<td><strong>" . htmlspecialchars($player['player_name']) . "</strong></td>";
+        if ($is_cricket) {
+            echo "<td>" . htmlspecialchars($player['runs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['overs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['wickets']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['half_centuries']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['centuries']) . "</td>";
+        } else {
+            echo "<td>" . htmlspecialchars($player['goals']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['yellow_cards']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['red_cards']) . "</td>";
+        }
+        echo "</tr>";
+        $rank++;
+    }
+
+    echo "</tbody></table></div>";
+}
+
 // Check if the user is logged in
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
@@ -272,6 +329,16 @@ if (isset($_GET['sport_id'])) {
         $team_b_score = (int) $_POST['team_b_score'];
         $team_a_overs = $is_cricket ? (float) $_POST['team_a_overs'] : null;
         $team_b_overs = $is_cricket ? (float) $_POST['team_b_overs'] : null;
+
+        if ($is_cricket) {
+            if (round(($team_a_overs - floor($team_a_overs)) * 10) > 5) {
+                $team_a_overs = (float) (floor($team_a_overs) + 1);
+            }
+            if (round(($team_b_overs - floor($team_b_overs)) * 10) > 5) {
+                $team_b_overs = (float) (floor($team_b_overs) + 1);
+            }
+        }
+
         $team_a_wickets = $is_cricket ? (int) $_POST['team_a_wickets'] : null;
         $team_b_wickets = $is_cricket ? (int) $_POST['team_b_wickets'] : null;
         $team_a_players = $_POST['team_a_players'] ?? [];
@@ -296,6 +363,50 @@ if (isset($_GET['sport_id'])) {
             exit();
         }
 
+        if ($is_football) {
+            $has_card_error = false;
+            $check_cards = function($players) use (&$has_card_error) {
+                if (!isset($players['name']) || !is_array($players['name'])) return;
+                foreach ($players['name'] as $index => $name) {
+                    if (trim($name) === '') continue;
+                    $yc = (int) ($players['yellow_cards'][$index] ?? 0);
+                    $rc = (int) ($players['red_cards'][$index] ?? 0);
+                    if ($yc > 1 || $rc > 1 || ($yc + $rc > 1)) {
+                        $has_card_error = true;
+                    }
+                }
+            };
+            $check_cards($team_a_players);
+            $check_cards($team_b_players);
+            if ($has_card_error) {
+                $_SESSION['error_message'] = "Invalid cards: A player can only have a maximum of 1 card, either Yellow or Red.";
+                header("Location: game.php?sport_id=" . $sport_id . "#team-submit");
+                exit();
+            }
+        }
+
+        if ($is_cricket) {
+            $has_milestone_error = false;
+            $check_milestones = function($players) use (&$has_milestone_error) {
+                if (!isset($players['name']) || !is_array($players['name'])) return;
+                foreach ($players['name'] as $index => $name) {
+                    if (trim($name) === '') continue;
+                    $fifties = (int) ($players['half_centuries'][$index] ?? 0);
+                    $hundreds = (int) ($players['centuries'][$index] ?? 0);
+                    if ($fifties > 1 || $hundreds > 1 || ($fifties + $hundreds > 1)) {
+                        $has_milestone_error = true;
+                    }
+                }
+            };
+            $check_milestones($team_a_players);
+            $check_milestones($team_b_players);
+            if ($has_milestone_error) {
+                $_SESSION['error_message'] = "Invalid milestones: A player can only have 1 half-century or 1 century, but not both.";
+                header("Location: game.php?sport_id=" . $sport_id . "#team-submit");
+                exit();
+            }
+        }
+
         if ($is_cricket && (sumPlayerStat($team_a_players, 'runs') > $team_a_score || sumPlayerStat($team_b_players, 'runs') > $team_b_score)) {
             $_SESSION['error_message'] = "Invalid runs: player runs cannot be more than the team's total runs.";
             header("Location: game.php?sport_id=" . $sport_id . "#team-submit");
@@ -306,6 +417,26 @@ if (isset($_GET['sport_id'])) {
             $_SESSION['error_message'] = "Invalid wickets: player wickets cannot be more than the team's total wickets.";
             header("Location: game.php?sport_id=" . $sport_id . "#team-submit");
             exit();
+        }
+
+        if ($is_cricket) {
+            $check_overs = function($players, $team_overs) {
+                if (!isset($players['name']) || !is_array($players['name'])) return true;
+                $team_balls = floor($team_overs) * 6 + round(($team_overs - floor($team_overs)) * 10);
+                $player_balls = 0;
+                foreach ($players['name'] as $index => $name) {
+                    if (trim($name) === '') continue;
+                    $o = (float) ($players['overs'][$index] ?? 0);
+                    $player_balls += floor($o) * 6 + round(($o - floor($o)) * 10);
+                }
+                return $player_balls <= $team_balls;
+            };
+
+            if (!$check_overs($team_a_players, (float)$team_a_overs) || !$check_overs($team_b_players, (float)$team_b_overs)) {
+                $_SESSION['error_message'] = "Invalid overs: the sum of player overs cannot exceed the team's total overs.";
+                header("Location: game.php?sport_id=" . $sport_id . "#team-submit");
+                exit();
+            }
         }
 
         $team_a_id = getTeamId($conn, $sport_id, $team_a_name);
@@ -402,15 +533,17 @@ if (isset($_GET['sport_id'])) {
                     echo "<div class='game-item'>
                             <h3>" . htmlspecialchars($game['team_a']) . " vs " . htmlspecialchars($game['team_b']) . "</h3>
                             <p>Date: " . htmlspecialchars($game['game_date']) . "</p>
-                            <div class='score-breakdown'>
-                                <div>
+                            <div class='score-breakdown team-player-breakdown'>
+                                <div class='team-score-panel'>
                                     <span>" . htmlspecialchars($game['team_a']) . "</span>
-                                    <strong>" . $team_a_result . "</strong>
-                                </div>
-                                <div>
+                                    <strong>" . $team_a_result . "</strong>";
+                                    renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_a_id']), $is_cricket);
+                    echo "      </div>
+                                <div class='team-score-panel'>
                                     <span>" . htmlspecialchars($game['team_b']) . "</span>
-                                    <strong>" . $team_b_result . "</strong>
-                                </div>
+                                    <strong>" . $team_b_result . "</strong>";
+                                    renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_b_id']), $is_cricket);
+                    echo "      </div>
                             </div>
                             <a class='h2h-btn' href='head_to_head.php?sport_id=" . $sport_id . "&team_a=" . htmlspecialchars($game['team_a_id']) . "&team_b=" . htmlspecialchars($game['team_b_id']) . "'>Head to Head</a>
                           </div>";
@@ -436,7 +569,7 @@ if (isset($_GET['sport_id'])) {
                             <input type="number" id="team_a_score" name="team_a_score" min="0" placeholder="Enter Runs" required>
 
                             <label for="team_a_overs">Overs</label>
-                            <input type="number" id="team_a_overs" name="team_a_overs" min="0" step="0.1" placeholder="Enter Overs" required>
+                            <input type="number" id="team_a_overs" name="team_a_overs" min="0" step="0.1" placeholder="Enter Overs" data-over-input required>
 
                             <label for="team_a_wickets">Wickets</label>
                             <input type="number" id="team_a_wickets" name="team_a_wickets" min="0" max="10" placeholder="Enter Wickets" data-wicket-input required>
@@ -458,7 +591,7 @@ if (isset($_GET['sport_id'])) {
                             <input type="number" id="team_b_score" name="team_b_score" min="0" placeholder="Enter Runs" required>
 
                             <label for="team_b_overs">Overs</label>
-                            <input type="number" id="team_b_overs" name="team_b_overs" min="0" step="0.1" placeholder="Enter Overs" required>
+                            <input type="number" id="team_b_overs" name="team_b_overs" min="0" step="0.1" placeholder="Enter Overs" data-over-input required>
 
                             <label for="team_b_wickets">Wickets</label>
                             <input type="number" id="team_b_wickets" name="team_b_wickets" min="0" max="10" placeholder="Enter Wickets" data-wicket-input required>
@@ -480,6 +613,9 @@ if (isset($_GET['sport_id'])) {
                     <p class="player-warning" data-goal-warning>Invalid goals: player goals cannot be more than the team's total goals.</p>
                     <p class="player-warning" data-run-warning>Invalid runs: player runs cannot be more than the team's total runs.</p>
                     <p class="player-warning" data-player-wicket-total-warning>Invalid wickets: player wickets cannot be more than the team's total wickets.</p>
+                    <p class="player-warning" data-over-total-warning>Invalid overs: sum of player overs cannot exceed the team's total overs.</p>
+                    <p class="player-warning" data-card-warning>Invalid cards: a player can only have 1 card (Yellow or Red).</p>
+                    <p class="player-warning" data-milestone-warning>Invalid milestones: a player can only have 1 half-century or 1 century.</p>
 
                     <div class="player-team-grid">
                         <div class="player-team" data-player-team="team_a_players">
@@ -522,6 +658,9 @@ if (isset($_GET['sport_id'])) {
         const goalWarning = document.querySelector("[data-goal-warning]");
         const runWarning = document.querySelector("[data-run-warning]");
         const playerWicketTotalWarning = document.querySelector("[data-player-wicket-total-warning]");
+        const overTotalWarning = document.querySelector("[data-over-total-warning]");
+        const cardWarning = document.querySelector("[data-card-warning]");
+        const milestoneWarning = document.querySelector("[data-milestone-warning]");
 
         function validateWickets() {
             let hasInvalidWickets = false;
@@ -546,9 +685,23 @@ if (isset($_GET['sport_id'])) {
             input.addEventListener("input", validateWickets);
         });
 
+        document.addEventListener("input", (event) => {
+            if (event.target.matches("[data-over-input]")) {
+                const input = event.target;
+                if (!input.value) return;
+                const value = parseFloat(input.value);
+                if (isNaN(value)) return;
+
+                const decimalPart = Math.round((value - Math.floor(value)) * 10);
+                if (decimalPart > 5) {
+                    input.value = Math.floor(value) + 1;
+                }
+            }
+        });
+
         if (scoreForm) {
             scoreForm.addEventListener("submit", (event) => {
-                if (!validateWickets() || !validatePlayerCounts() || !validatePlayerGoals() || !validateCricketPlayerTotals()) {
+                if (!validateWickets() || !validatePlayerCounts() || !validatePlayerGoals() || !validateCricketPlayerTotals() || !validatePlayerCards() || !validateCricketMilestones()) {
                     event.preventDefault();
                 }
             });
@@ -559,18 +712,18 @@ if (isset($_GET['sport_id'])) {
                 return `
                     <input type="text" name="${teamName}[name][]" placeholder="Player Name">
                     <input type="number" name="${teamName}[runs][]" min="0" placeholder="Runs">
-                    <input type="number" name="${teamName}[overs][]" min="0" step="0.1" placeholder="Overs">
+                    <input type="number" name="${teamName}[overs][]" min="0" step="0.1" placeholder="Overs" data-over-input>
                     <input type="number" name="${teamName}[wickets][]" min="0" max="10" placeholder="Wickets">
-                    <input type="number" name="${teamName}[half_centuries][]" min="0" placeholder="50's">
-                    <input type="number" name="${teamName}[centuries][]" min="0" placeholder="100's">
+                    <input type="number" name="${teamName}[half_centuries][]" min="0" max="1" placeholder="50's">
+                    <input type="number" name="${teamName}[centuries][]" min="0" max="1" placeholder="100's">
                 `;
             }
 
             return `
                 <input type="text" name="${teamName}[name][]" placeholder="Player Name">
                 <input type="number" name="${teamName}[goals][]" min="0" placeholder="Goals">
-                <input type="number" name="${teamName}[yellow_cards][]" min="0" placeholder="Yellow Cards">
-                <input type="number" name="${teamName}[red_cards][]" min="0" placeholder="Red Cards">
+                <input type="number" name="${teamName}[yellow_cards][]" min="0" max="1" placeholder="Yellow Cards">
+                <input type="number" name="${teamName}[red_cards][]" min="0" max="1" placeholder="Red Cards">
             `;
         }
 
@@ -645,26 +798,32 @@ if (isset($_GET['sport_id'])) {
                 {
                     team: document.querySelector('[data-player-team="team_a_players"]'),
                     runsInput: document.querySelector("#team_a_score"),
-                    wicketsInput: document.querySelector("#team_a_wickets")
+                    wicketsInput: document.querySelector("#team_a_wickets"),
+                    oversInput: document.querySelector("#team_a_overs")
                 },
                 {
                     team: document.querySelector('[data-player-team="team_b_players"]'),
                     runsInput: document.querySelector("#team_b_score"),
-                    wicketsInput: document.querySelector("#team_b_wickets")
+                    wicketsInput: document.querySelector("#team_b_wickets"),
+                    oversInput: document.querySelector("#team_b_overs")
                 }
             ];
             let hasInvalidRuns = false;
             let hasInvalidWickets = false;
+            let hasInvalidOvers = false;
 
             teamConfigs.forEach((config) => {
-                if (!config.team || !config.runsInput || !config.wicketsInput) {
+                if (!config.team || !config.runsInput || !config.wicketsInput || !config.oversInput) {
                     return;
                 }
 
                 const teamRuns = Number(config.runsInput.value || 0);
                 const teamWickets = Number(config.wicketsInput.value || 0);
+                const teamOvers = Number(config.oversInput.value || 0);
+                const teamTotalBalls = Math.floor(teamOvers) * 6 + Math.round((teamOvers - Math.floor(teamOvers)) * 10);
                 let playerRuns = 0;
                 let playerWickets = 0;
+                let playerBalls = 0;
 
                 config.team.querySelectorAll('input[name$="[runs][]"]').forEach((input) => {
                     playerRuns += Number(input.value || 0);
@@ -674,10 +833,16 @@ if (isset($_GET['sport_id'])) {
                     playerWickets += Number(input.value || 0);
                 });
 
+                config.team.querySelectorAll('input[name$="[overs][]"]').forEach((input) => {
+                    const o = Number(input.value || 0);
+                    playerBalls += Math.floor(o) * 6 + Math.round((o - Math.floor(o)) * 10);
+                });
+
                 const invalidRuns = playerRuns > teamRuns;
                 const invalidWickets = playerWickets > teamWickets;
+                const invalidOvers = playerBalls > teamTotalBalls;
 
-                config.team.classList.toggle("player-limit-warning", invalidRuns || invalidWickets);
+                config.team.classList.toggle("player-limit-warning", invalidRuns || invalidWickets || invalidOvers);
 
                 if (invalidRuns) {
                     hasInvalidRuns = true;
@@ -685,6 +850,10 @@ if (isset($_GET['sport_id'])) {
 
                 if (invalidWickets) {
                     hasInvalidWickets = true;
+                }
+
+                if (invalidOvers) {
+                    hasInvalidOvers = true;
                 }
             });
 
@@ -696,7 +865,67 @@ if (isset($_GET['sport_id'])) {
                 playerWicketTotalWarning.classList.toggle("show", hasInvalidWickets);
             }
 
-            return !hasInvalidRuns && !hasInvalidWickets;
+            if (overTotalWarning) {
+                overTotalWarning.classList.toggle("show", hasInvalidOvers);
+            }
+
+            return !hasInvalidRuns && !hasInvalidWickets && !hasInvalidOvers;
+        }
+
+        function validatePlayerCards() {
+            if (sportType !== "football") {
+                return true;
+            }
+
+            let hasInvalidCards = false;
+
+            document.querySelectorAll(".player-row").forEach(row => {
+                const ycInput = row.querySelector('input[name$="[yellow_cards][]"]');
+                const rcInput = row.querySelector('input[name$="[red_cards][]"]');
+                
+                if (ycInput && rcInput) {
+                    const yc = Number(ycInput.value || 0);
+                    const rc = Number(rcInput.value || 0);
+                    const isInvalid = yc > 1 || rc > 1 || (yc + rc > 1);
+
+                    ycInput.classList.toggle("input-warning", isInvalid);
+                    rcInput.classList.toggle("input-warning", isInvalid);
+
+                    if (isInvalid) hasInvalidCards = true;
+                }
+            });
+
+            if (cardWarning) cardWarning.classList.toggle("show", hasInvalidCards);
+
+            return !hasInvalidCards;
+        }
+
+        function validateCricketMilestones() {
+            if (sportType !== "cricket") {
+                return true;
+            }
+
+            let hasInvalidMilestones = false;
+
+            document.querySelectorAll(".player-row").forEach(row => {
+                const fiftiesInput = row.querySelector('input[name$="[half_centuries][]"]');
+                const hundredsInput = row.querySelector('input[name$="[centuries][]"]');
+                
+                if (fiftiesInput && hundredsInput) {
+                    const fifties = Number(fiftiesInput.value || 0);
+                    const hundreds = Number(hundredsInput.value || 0);
+                    const isInvalid = fifties > 1 || hundreds > 1 || (fifties + hundreds > 1);
+
+                    fiftiesInput.classList.toggle("input-warning", isInvalid);
+                    hundredsInput.classList.toggle("input-warning", isInvalid);
+
+                    if (isInvalid) hasInvalidMilestones = true;
+                }
+            });
+
+            if (milestoneWarning) milestoneWarning.classList.toggle("show", hasInvalidMilestones);
+
+            return !hasInvalidMilestones;
         }
 
         document.querySelectorAll("[data-add-player]").forEach((button) => {
@@ -724,14 +953,18 @@ if (isset($_GET['sport_id'])) {
                 row.querySelectorAll("input").forEach((input) => {
                     input.addEventListener("input", validatePlayerGoals);
                     input.addEventListener("input", validateCricketPlayerTotals);
+                    input.addEventListener("input", validatePlayerCards);
+                    input.addEventListener("input", validateCricketMilestones);
                 });
                 validatePlayerCounts();
                 validatePlayerGoals();
                 validateCricketPlayerTotals();
+                validatePlayerCards();
+                validateCricketMilestones();
             });
         });
 
-        document.querySelectorAll("#team_a_score, #team_b_score, #team_a_wickets, #team_b_wickets").forEach((input) => {
+        document.querySelectorAll("#team_a_score, #team_b_score, #team_a_overs, #team_b_overs, #team_a_wickets, #team_b_wickets").forEach((input) => {
             input.addEventListener("input", validatePlayerGoals);
             input.addEventListener("input", validateCricketPlayerTotals);
         });

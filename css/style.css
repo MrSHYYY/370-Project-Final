@@ -1,18 +1,18 @@
 :root {
-    --bg: #edf5f3;
-    --bg-soft: #f7fbfa;
+    --bg: #f3f4f6;
+    --bg-soft: #f9fafb;
     --surface: #ffffff;
-    --surface-soft: #f6faf9;
-    --text: #152033;
-    --muted: #5f6f86;
-    --primary: #2f6f73;
-    --primary-dark: #24585b;
-    --accent: #3b82a0;
-    --danger: #ef4444;
-    --danger-dark: #dc2626;
-    --border: #dbe3ef;
-    --shadow: 0 18px 45px rgba(31, 41, 55, 0.12);
-    --shadow-soft: 0 10px 25px rgba(31, 41, 55, 0.08);
+    --surface-soft: #f8fafc;
+    --text: #1e293b;
+    --muted: #64748b;
+    --primary: #4f46e5;
+    --primary-dark: #3730a3;
+    --accent: #7c3aed;
+    --danger: #e11d48;
+    --danger-dark: #be123c;
+    --border: #e2e8f0;
+    --shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+    --shadow-soft: 0 10px 25px rgba(15, 23, 42, 0.08);
 }
 
 * {
@@ -142,7 +142,7 @@ header > * {
 
 .login-container,
 .register-container {
-    max-width: 460px;
+    max-width: 520px;
     padding: 34px;
     background: rgba(255, 255, 255, 0.88);
     border: 1px solid rgba(219, 227, 239, 0.9);
@@ -511,35 +511,69 @@ form button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.player-score-list {
-    display: grid;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.player-score-item {
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    background: var(--surface-soft);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-}
-
-.player-score-item strong {
-    color: var(--text);
-    text-align: left;
-}
-
-.player-score-item span,
 .player-empty {
+    margin: 12px 0 0;
     color: var(--muted);
     font-size: 0.92rem;
     line-height: 1.5;
 }
 
-.player-empty {
-    margin: 12px 0 0;
+.player-table-container {
+    margin-top: 12px;
+    overflow-x: auto;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.player-score-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.player-score-table th,
+.player-score-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.player-score-table th {
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.player-score-table tbody tr:last-child th,
+.player-score-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.player-score-table td:nth-child(2) {
+    text-align: left;
+    width: 100%;
+    white-space: normal;
+}
+
+.player-score-table td strong {
+    color: var(--text);
+}
+
+.player-rank-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #ffffff;
+    background: var(--primary);
+    border-radius: 4px;
 }
 
 .score-form {
@@ -624,6 +658,7 @@ form {
 .player-list {
     display: grid;
     gap: 12px;
+    counter-reset: player-counter;
 }
 
 .player-row {
@@ -633,6 +668,15 @@ form {
     background: #ffffff;
     border: 1px solid var(--border);
     border-radius: 12px;
+}
+
+.player-row::before {
+    counter-increment: player-counter;
+    content: "Player " counter(player-counter);
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--primary);
 }
 
 .player-fields {
@@ -817,6 +861,31 @@ form button {
 
 .danger-btn:hover {
     background: var(--danger-dark);
+}
+
+.welcome-text {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.welcome-text .modern-title {
+    font-size: clamp(2rem, 5vw, 2.6rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    margin-bottom: 12px;
+}
+
+.welcome-text .modern-subtitle {
+    font-size: 1.1rem;
+    color: var(--muted);
+    font-weight: 500;
+    margin: 0;
 }
 
 @media (max-width: 680px) {

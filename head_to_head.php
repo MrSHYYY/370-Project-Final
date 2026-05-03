@@ -89,7 +89,7 @@ function getPlayerScores($conn, $game_id, $team_id) {
                             FROM player_scores
                             INNER JOIN players ON player_scores.player_id = players.player_id
                             WHERE player_scores.game_id = ? AND players.team_id = ?
-                            ORDER BY players.player_name ASC");
+                            ORDER BY player_scores.score DESC, players.player_name ASC");
     $stmt->bind_param("ii", $game_id, $team_id);
     $stmt->execute();
     return $stmt->get_result();
@@ -101,28 +101,40 @@ function renderPlayerScores($player_scores, $is_cricket) {
         return;
     }
 
-    echo "<div class='player-score-list'>";
+    echo "<div class='player-table-container'>";
+    echo "<table class='player-score-table'>";
+    echo "<thead><tr>";
+    echo "<th>#</th>";
+    echo "<th>Player</th>";
+    if ($is_cricket) {
+        echo "<th>Runs</th><th>Overs</th><th>W</th><th>50s</th><th>100s</th>";
+    } else {
+        echo "<th>Goals</th><th>YC</th><th>RC</th>";
+    }
+    echo "</tr></thead>";
+    echo "<tbody>";
 
+    $rank = 1;
     while ($player = $player_scores->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td><span class='player-rank-mini'>{$rank}</span></td>";
+        echo "<td><strong>" . htmlspecialchars($player['player_name']) . "</strong></td>";
         if ($is_cricket) {
-            $details = "Runs: " . htmlspecialchars($player['runs']) .
-                " | Overs: " . htmlspecialchars($player['overs']) .
-                " | Wickets: " . htmlspecialchars($player['wickets']) .
-                " | 50's: " . htmlspecialchars($player['half_centuries']) .
-                " | 100's: " . htmlspecialchars($player['centuries']);
+            echo "<td>" . htmlspecialchars($player['runs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['overs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['wickets']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['half_centuries']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['centuries']) . "</td>";
         } else {
-            $details = "Goals: " . htmlspecialchars($player['goals']) .
-                " | Yellow Cards: " . htmlspecialchars($player['yellow_cards']) .
-                " | Red Cards: " . htmlspecialchars($player['red_cards']);
+            echo "<td>" . htmlspecialchars($player['goals']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['yellow_cards']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['red_cards']) . "</td>";
         }
-
-        echo "<div class='player-score-item'>
-                <strong>" . htmlspecialchars($player['player_name']) . "</strong>
-                <span>" . $details . "</span>
-              </div>";
+        echo "</tr>";
+        $rank++;
     }
 
-    echo "</div>";
+    echo "</tbody></table></div>";
 }
 ?>
 <!DOCTYPE html>

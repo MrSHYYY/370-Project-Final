@@ -41,6 +41,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     <?php } ?>
     <div class="login-container">
+        <div class="welcome-text">
+            <h1 class="modern-title">Welcome to One Scoreboard</h1>
+            <p class="modern-subtitle">Please login to store your team scores</p>
+        </div>
         <h2>Login</h2>
         <?php if (isset($error)) { echo "<p class='error'>$error</p>"; } ?>
         <form method="POST" action="login.php">

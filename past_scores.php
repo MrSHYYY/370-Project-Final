@@ -50,6 +50,58 @@ function formatPastScore($game) {
         htmlspecialchars($game['team_b_score']) . " goals"
     ];
 }
+
+function getPlayerScores($conn, $game_id, $team_id) {
+    $stmt = $conn->prepare("SELECT players.player_name, player_scores.*
+                            FROM player_scores
+                            INNER JOIN players ON player_scores.player_id = players.player_id
+                            WHERE player_scores.game_id = ? AND players.team_id = ?
+                            ORDER BY player_scores.score DESC, players.player_name ASC");
+    $stmt->bind_param("ii", $game_id, $team_id);
+    $stmt->execute();
+    return $stmt->get_result();
+}
+
+function renderPlayerScores($player_scores, $is_cricket) {
+    if ($player_scores->num_rows === 0) {
+        return;
+    }
+
+    echo "<div class='player-table-container'>";
+    echo "<table class='player-score-table'>";
+    echo "<thead><tr>";
+    echo "<th>#</th>";
+    echo "<th>Player</th>";
+    if ($is_cricket) {
+        echo "<th>Runs</th><th>Overs</th><th>W</th><th>50s</th><th>100s</th>";
+    } else {
+        echo "<th>Goals</th><th>YC</th><th>RC</th>";
+    }
+    echo "</tr></thead>";
+    echo "<tbody>";
+
+    $rank = 1;
+    while ($player = $player_scores->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td><span class='player-rank-mini'>{$rank}</span></td>";
+        echo "<td><strong>" . htmlspecialchars($player['player_name']) . "</strong></td>";
+        if ($is_cricket) {
+            echo "<td>" . htmlspecialchars($player['runs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['overs']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['wickets']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['half_centuries']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['centuries']) . "</td>";
+        } else {
+            echo "<td>" . htmlspecialchars($player['goals']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['yellow_cards']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['red_cards']) . "</td>";
+        }
+        echo "</tr>";
+        $rank++;
+    }
+
+    echo "</tbody></table></div>";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,14 +131,16 @@ function formatPastScore($game) {
                         <h3><?php echo htmlspecialchars($game['team_a']); ?> vs <?php echo htmlspecialchars($game['team_b']); ?></h3>
                         <p>Sport: <?php echo htmlspecialchars($game['sport_name']); ?></p>
                         <p>Date: <?php echo htmlspecialchars($game['game_date']); ?></p>
-                        <div class="score-breakdown">
-                            <div>
+                        <div class="score-breakdown team-player-breakdown">
+                            <div class="team-score-panel">
                                 <span><?php echo htmlspecialchars($game['team_a']); ?></span>
                                 <strong><?php echo $scores[0]; ?></strong>
+                                <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_a_id']), strtolower($game['sport_name']) === 'cricket'); ?>
                             </div>
-                            <div>
+                            <div class="team-score-panel">
                                 <span><?php echo htmlspecialchars($game['team_b']); ?></span>
                                 <strong><?php echo $scores[1]; ?></strong>
+                                <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_b_id']), strtolower($game['sport_name']) === 'cricket'); ?>
                             </div>
                         </div>
                         <div class="past-score-actions">
