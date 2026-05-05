@@ -40,8 +40,8 @@ $past_scores = $stmt->get_result();
 function formatPastScore($game) {
     if (strtolower($game['sport_name']) === 'cricket') {
         return [
-            htmlspecialchars($game['team_a_score']) . "/" . htmlspecialchars($game['team_a_wickets']) . " in " . htmlspecialchars($game['team_a_overs']) . " overs",
-            htmlspecialchars($game['team_b_score']) . "/" . htmlspecialchars($game['team_b_wickets']) . " in " . htmlspecialchars($game['team_b_overs']) . " overs"
+            htmlspecialchars($game['team_a_score']) . "/" . htmlspecialchars($game['team_a_wickets']) . " in " . htmlspecialchars($game['team_a_overs']) . " overs, extras " . htmlspecialchars($game['team_a_extras']),
+            htmlspecialchars($game['team_b_score']) . "/" . htmlspecialchars($game['team_b_wickets']) . " in " . htmlspecialchars($game['team_b_overs']) . " overs, extras " . htmlspecialchars($game['team_b_extras'])
         ];
     }
 

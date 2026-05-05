@@ -81,8 +81,8 @@ $users = $conn->query("SELECT user_id, username, created_at FROM users WHERE LOW
 function formatAdminScore($score) {
     if (strtolower($score['sport_name']) === 'cricket') {
         return [
-            htmlspecialchars($score['team_a_score']) . "/" . htmlspecialchars($score['team_a_wickets']) . " in " . htmlspecialchars($score['team_a_overs']) . " overs",
-            htmlspecialchars($score['team_b_score']) . "/" . htmlspecialchars($score['team_b_wickets']) . " in " . htmlspecialchars($score['team_b_overs']) . " overs"
+            htmlspecialchars($score['team_a_score']) . "/" . htmlspecialchars($score['team_a_wickets']) . " in " . htmlspecialchars($score['team_a_overs']) . " overs, extras " . htmlspecialchars($score['team_a_extras']),
+            htmlspecialchars($score['team_b_score']) . "/" . htmlspecialchars($score['team_b_wickets']) . " in " . htmlspecialchars($score['team_b_overs']) . " overs, extras " . htmlspecialchars($score['team_b_extras'])
         ];
     }
 

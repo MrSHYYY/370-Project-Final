@@ -69,6 +69,11 @@ $stmt = $conn->prepare("SELECT games.*, team_a.team_name AS team_a, team_b.team_
                         WHERE games.sport_id = ? AND games.user_id = ?
                         AND ((games.team_a_id = ? AND games.team_b_id = ?)
                             OR (games.team_a_id = ? AND games.team_b_id = ?))
+                        AND EXISTS (
+                            SELECT 1
+                            FROM player_scores
+                            WHERE player_scores.game_id = games.game_id
+                        )
                         ORDER BY games.game_date DESC");
 $stmt->bind_param("iiiiii", $sport_id, $user_id, $team_a_id, $team_b_id, $team_b_id, $team_a_id);
 $stmt->execute();
@@ -84,12 +89,20 @@ function formatTeamScore($game, $team_side, $is_cricket) {
     return htmlspecialchars($game[$team_side . '_score']) . " goals";
 }
 
-function getPlayerScores($conn, $game_id, $team_id) {
+function formatTeamExtras($game, $team_side) {
+    return "Extras: " . htmlspecialchars($game[$team_side . '_extras']);
+}
+
+function getPlayerScores($conn, $game_id, $team_id, $is_cricket) {
+    $order_by = $is_cricket
+        ? "player_scores.score DESC, players.player_name ASC"
+        : "player_scores.rating DESC, player_scores.goals DESC, players.player_name ASC";
+
     $stmt = $conn->prepare("SELECT players.player_name, player_scores.*
                             FROM player_scores
                             INNER JOIN players ON player_scores.player_id = players.player_id
                             WHERE player_scores.game_id = ? AND players.team_id = ?
-                            ORDER BY player_scores.score DESC, players.player_name ASC");
+                            ORDER BY " . $order_by);
     $stmt->bind_param("ii", $game_id, $team_id);
     $stmt->execute();
     return $stmt->get_result();
@@ -109,7 +122,7 @@ function renderPlayerScores($player_scores, $is_cricket) {
     if ($is_cricket) {
         echo "<th>Runs</th><th>Overs</th><th>W</th><th>50s</th><th>100s</th>";
     } else {
-        echo "<th>Goals</th><th>YC</th><th>RC</th>";
+        echo "<th>Goals</th><th>YC</th><th>RC</th><th>Rating</th>";
     }
     echo "</tr></thead>";
     echo "<tbody>";
@@ -129,6 +142,7 @@ function renderPlayerScores($player_scores, $is_cricket) {
             echo "<td>" . htmlspecialchars($player['goals']) . "</td>";
             echo "<td>" . htmlspecialchars($player['yellow_cards']) . "</td>";
             echo "<td>" . htmlspecialchars($player['red_cards']) . "</td>";
+            echo "<td>" . htmlspecialchars($player['rating'] ?? '-') . "</td>";
         }
         echo "</tr>";
         $rank++;
@@ -187,13 +201,19 @@ function renderPlayerScores($player_scores, $is_cricket) {
                                 <div class="team-score-panel">
                                     <span><?php echo htmlspecialchars($game['team_a']); ?></span>
                                     <strong><?php echo formatTeamScore($game, 'team_a', $is_cricket); ?></strong>
-                                    <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_a_id']), $is_cricket); ?>
+                                    <?php if ($is_cricket) { ?>
+                                        <p class="score-extras"><?php echo formatTeamExtras($game, 'team_a'); ?></p>
+                                    <?php } ?>
+                                    <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_a_id'], $is_cricket), $is_cricket); ?>
                                 </div>
 
                                 <div class="team-score-panel">
                                     <span><?php echo htmlspecialchars($game['team_b']); ?></span>
                                     <strong><?php echo formatTeamScore($game, 'team_b', $is_cricket); ?></strong>
-                                    <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_b_id']), $is_cricket); ?>
+                                    <?php if ($is_cricket) { ?>
+                                        <p class="score-extras"><?php echo formatTeamExtras($game, 'team_b'); ?></p>
+                                    <?php } ?>
+                                    <?php renderPlayerScores(getPlayerScores($conn, $game['game_id'], $game['team_b_id'], $is_cricket), $is_cricket); ?>
                                 </div>
                             </div>
                         </div>

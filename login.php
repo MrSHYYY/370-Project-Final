@@ -41,14 +41,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     <?php } ?>
     <div class="login-container">
-        <h2>Login</h2>
+        <div class="auth-header">
+            <p class="auth-kicker">Scoreboard</p>
+            <h2>Welcome Back</h2>
+            <p>Log in to manage games, scores, and team results.</p>
+        </div>
         <?php if (isset($error)) { echo "<p class='error'>$error</p>"; } ?>
         <form method="POST" action="login.php">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Login</button>
         </form>
-        <div class="admin-login-option">
+        <div class="login-actions">
+            <a href="register.php" class="dashboard-action-btn">Sign Up</a>
             <a href="admin_login.php" class="dashboard-action-btn">Admin Login</a>
         </div>
     </div>

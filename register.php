@@ -37,21 +37,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Sign Up</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="auth-page">
     <?php if (isset($_SESSION['username'])) { ?>
         <div class="page-actions">
             <a href="logout.php" class="logout-btn">Logout</a>
         </div>
     <?php } ?>
     <div class="register-container">
-        <h2>Sign Up</h2>
+        <div class="auth-header">
+            <p class="auth-kicker">Scoreboard</p>
+            <h2>Create Account</h2>
+            <p>Join the scoreboard and start tracking your match results.</p>
+        </div>
         <?php if (isset($error)) { echo "<p class='error'>$error</p>"; } ?>
         <form method="POST" action="register.php">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
             <button type="submit">Sign Up</button>
         </form>
-        <p>Already have an account? <a href="login.php">Login here</a></p>
+        <div class="signup-actions">
+            <a href="login.php" class="dashboard-action-btn">Login Instead</a>
+        </div>
     </div>
 </body>
 </html>
