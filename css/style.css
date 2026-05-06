@@ -1508,6 +1508,23 @@ body:not(.auth-page) .individual-section-heading span {
     font-weight: 400;
 }
 
+body:not(.auth-page) .success,
+body:not(.auth-page) .selected-format-text {
+    color: #064e3b;
+    background: #bbf7d0;
+    border-color: #34d399;
+    font-weight: 800;
+    text-shadow: none;
+}
+
+body:not(.auth-page) .error {
+    color: #7f1d1d;
+    background: #fecaca;
+    border-color: #f87171;
+    font-weight: 800;
+    text-shadow: none;
+}
+
 body:not(.auth-page) header,
 body:not(.auth-page) .intro,
 body:not(.auth-page) .actions,
