@@ -43,9 +43,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $team_b_id = getOrCreateTeamId($conn, $sport_id, $team_b_name);
         $formatted_match_date = date('Y-m-d H:i:s', strtotime($match_date));
 
-        $stmt = $conn->prepare("INSERT INTO scheduled_matches (user_id, sport_id, team_a_id, team_b_id, match_date)
-                                VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("iiiis", $user_id, $sport_id, $team_a_id, $team_b_id, $formatted_match_date);
+        $stmt = $conn->prepare("INSERT INTO scheduled_matches (user_id, team_a_id, team_b_id, match_date)
+                                VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiis", $user_id, $team_a_id, $team_b_id, $formatted_match_date);
 
         if ($stmt->execute()) {
             $_SESSION['schedule_message'] = "Schedule saved successfully.";

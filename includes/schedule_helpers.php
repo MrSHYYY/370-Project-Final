@@ -26,7 +26,7 @@ function requireLoggedInUser($conn) {
 function getOrCreateTeamId($conn, $sport_id, $team_name) {
     $team_name = trim($team_name);
 
-    $stmt = $conn->prepare("SELECT team_id FROM teams WHERE sport_id = ? AND team_name = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT team_id FROM teams WHERE sport_id = ? AND LOWER(team_name) = LOWER(?) LIMIT 1");
     $stmt->bind_param("is", $sport_id, $team_name);
     $stmt->execute();
     $team = $stmt->get_result()->fetch_assoc();

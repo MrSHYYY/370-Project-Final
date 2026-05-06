@@ -66,7 +66,9 @@ $stmt = $conn->prepare("SELECT games.*, team_a.team_name AS team_a, team_b.team_
                         FROM games
                         LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
                         LEFT JOIN teams AS team_b ON games.team_b_id = team_b.team_id
-                        WHERE games.sport_id = ? AND games.user_id = ?
+                        WHERE team_a.sport_id = ?
+                        AND team_b.sport_id = ?
+                        AND games.user_id = ?
                         AND ((games.team_a_id = ? AND games.team_b_id = ?)
                             OR (games.team_a_id = ? AND games.team_b_id = ?))
                         AND EXISTS (
@@ -75,7 +77,7 @@ $stmt = $conn->prepare("SELECT games.*, team_a.team_name AS team_a, team_b.team_
                             WHERE player_scores.game_id = games.game_id
                         )
                         ORDER BY games.game_date DESC");
-$stmt->bind_param("iiiiii", $sport_id, $user_id, $team_a_id, $team_b_id, $team_b_id, $team_a_id);
+$stmt->bind_param("iiiiiii", $sport_id, $sport_id, $user_id, $team_a_id, $team_b_id, $team_b_id, $team_a_id);
 $stmt->execute();
 $games = $stmt->get_result();
 

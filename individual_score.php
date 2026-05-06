@@ -50,7 +50,7 @@ if ($has_searched) {
                                 INNER JOIN teams ON players.team_id = teams.team_id
                                 INNER JOIN player_scores ON players.player_id = player_scores.player_id
                                 INNER JOIN games ON player_scores.game_id = games.game_id
-                                INNER JOIN sports ON games.sport_id = sports.sport_id
+                                INNER JOIN sports ON teams.sport_id = sports.sport_id
                                 LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
                                 LEFT JOIN teams AS team_b ON games.team_b_id = team_b.team_id
                                 WHERE LOWER(players.player_name) = LOWER(?)

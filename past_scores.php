@@ -25,13 +25,14 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int) $_SESSION['user_id'];
 
-$stmt = $conn->prepare("SELECT past_scores.*, games.*, sports.sport_name, team_a.team_name AS team_a, team_b.team_name AS team_b
+$stmt = $conn->prepare("SELECT past_scores.*, games.*, sports.sport_id, sports.sport_name, team_a.team_name AS team_a, team_b.team_name AS team_b
                         FROM past_scores
                         INNER JOIN games ON past_scores.game_id = games.game_id
-                        LEFT JOIN sports ON past_scores.sport_id = sports.sport_id
-                        LEFT JOIN teams AS team_a ON past_scores.team_a_id = team_a.team_id
-                        LEFT JOIN teams AS team_b ON past_scores.team_b_id = team_b.team_id
-                        WHERE past_scores.user_id = ?
+                        LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
+                        LEFT JOIN teams AS team_b ON games.team_b_id = team_b.team_id
+                        LEFT JOIN sports ON team_a.sport_id = sports.sport_id
+                        WHERE games.user_id = ?
+                          AND team_b.sport_id = team_a.sport_id
                         ORDER BY games.game_date DESC");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();

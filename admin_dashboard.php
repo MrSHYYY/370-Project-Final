@@ -71,9 +71,9 @@ if (isset($_SESSION['admin_message'])) {
 $scores = $conn->query("SELECT games.*, users.username, sports.sport_name, team_a.team_name AS team_a, team_b.team_name AS team_b
                         FROM games
                         LEFT JOIN users ON games.user_id = users.user_id
-                        LEFT JOIN sports ON games.sport_id = sports.sport_id
                         LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
                         LEFT JOIN teams AS team_b ON games.team_b_id = team_b.team_id
+                        LEFT JOIN sports ON team_a.sport_id = sports.sport_id
                         ORDER BY games.game_date DESC");
 
 $users = $conn->query("SELECT user_id, username, created_at FROM users WHERE LOWER(username) <> 'admin' ORDER BY created_at DESC");

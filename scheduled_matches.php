@@ -15,13 +15,14 @@ if (isset($_SESSION['error_message'])) {
     unset($_SESSION['error_message']);
 }
 
-$stmt = $conn->prepare("SELECT scheduled_matches.*, sports.sport_name,
+$stmt = $conn->prepare("SELECT scheduled_matches.*, sports.sport_id, sports.sport_name,
                                team_a.team_name AS team_a, team_b.team_name AS team_b
                         FROM scheduled_matches
-                        INNER JOIN sports ON scheduled_matches.sport_id = sports.sport_id
                         INNER JOIN teams AS team_a ON scheduled_matches.team_a_id = team_a.team_id
                         INNER JOIN teams AS team_b ON scheduled_matches.team_b_id = team_b.team_id
+                        INNER JOIN sports ON team_a.sport_id = sports.sport_id
                         WHERE scheduled_matches.user_id = ?
+                          AND team_b.sport_id = team_a.sport_id
                           AND scheduled_matches.status = 'scheduled'
                         ORDER BY scheduled_matches.match_date ASC");
 $stmt->bind_param("i", $user_id);

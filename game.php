@@ -15,7 +15,7 @@ if (isset($_SESSION['error_message'])) {
 function getTeamId($conn, $sport_id, $team_name) {
     $team_name = trim($team_name);
 
-    $stmt = $conn->prepare("SELECT team_id FROM teams WHERE sport_id = ? AND team_name = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT team_id FROM teams WHERE sport_id = ? AND LOWER(team_name) = LOWER(?) LIMIT 1");
     $stmt->bind_param("is", $sport_id, $team_name);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -224,10 +224,10 @@ function updateHeadToHead($conn, $user_id, $team_a_id, $team_b_id, $team_a_score
     }
 }
 
-function savePastScore($conn, $game_id, $user_id, $sport_id, $team_a_id, $team_b_id) {
-    $stmt = $conn->prepare("INSERT IGNORE INTO past_scores (game_id, user_id, sport_id, team_a_id, team_b_id)
-                            VALUES (?, ?, ?, ?, ?)");
-    $stmt->bind_param("iiiii", $game_id, $user_id, $sport_id, $team_a_id, $team_b_id);
+function savePastScore($conn, $game_id) {
+    $stmt = $conn->prepare("INSERT IGNORE INTO past_scores (game_id)
+                            VALUES (?)");
+    $stmt->bind_param("i", $game_id);
     $stmt->execute();
     $stmt->close();
 }
@@ -339,10 +339,11 @@ if (isset($_GET['sport_id'])) {
                                 INNER JOIN teams AS team_b ON scheduled_matches.team_b_id = team_b.team_id
                                 WHERE scheduled_matches.schedule_id = ?
                                   AND scheduled_matches.user_id = ?
-                                  AND scheduled_matches.sport_id = ?
+                                  AND team_a.sport_id = ?
+                                  AND team_b.sport_id = ?
                                   AND scheduled_matches.status = 'scheduled'
                                 LIMIT 1");
-        $stmt->bind_param("iii", $scheduled_match_id, $user_id, $sport_id);
+        $stmt->bind_param("iiii", $scheduled_match_id, $user_id, $sport_id, $sport_id);
         $stmt->execute();
         $scheduled_match = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -515,16 +516,15 @@ if (isset($_GET['sport_id'])) {
 
         // Insert the match scores into the database
         $stmt = $conn->prepare("INSERT INTO games (
-                                    user_id, sport_id, team_a_id, team_b_id,
+                                    user_id, team_a_id, team_b_id,
                                     team_a_score, team_a_overs, team_a_wickets, team_a_extras,
                                     team_b_score, team_b_overs, team_b_wickets, team_b_extras,
                                     game_date
                                 )
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param(
-            "iiiiidiiidiis",
+            "iiiidiiidiis",
             $user_id,
-            $sport_id,
             $team_a_id,
             $team_b_id,
             $team_a_score,
@@ -541,7 +541,7 @@ if (isset($_GET['sport_id'])) {
         if ($stmt->execute()) {
             $game_id = $conn->insert_id;
             updateHeadToHead($conn, $user_id, $team_a_id, $team_b_id, $team_a_score, $team_b_score);
-            savePastScore($conn, $game_id, $user_id, $sport_id, $team_a_id, $team_b_id);
+            savePastScore($conn, $game_id);
             savePlayerScores($conn, $game_id, $team_a_id, $team_a_players, $is_cricket);
             savePlayerScores($conn, $game_id, $team_b_id, $team_b_players, $is_cricket);
 
@@ -550,11 +550,10 @@ if (isset($_GET['sport_id'])) {
                                                         SET status = 'completed', game_id = ?
                                                         WHERE schedule_id = ?
                                                           AND user_id = ?
-                                                          AND sport_id = ?
                                                           AND team_a_id = ?
                                                           AND team_b_id = ?
                                                           AND status = 'scheduled'");
-                $stmt_update_schedule->bind_param("iiiiii", $game_id, $submitted_schedule_id, $user_id, $sport_id, $team_a_id, $team_b_id);
+                $stmt_update_schedule->bind_param("iiiii", $game_id, $submitted_schedule_id, $user_id, $team_a_id, $team_b_id);
                 $stmt_update_schedule->execute();
                 $stmt_update_schedule->close();
             }
@@ -574,9 +573,11 @@ if (isset($_GET['sport_id'])) {
                             FROM games
                             LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
                             LEFT JOIN teams AS team_b ON games.team_b_id = team_b.team_id
-                            WHERE games.sport_id = ? AND games.user_id = ?
+                            WHERE team_a.sport_id = ?
+                              AND team_b.sport_id = ?
+                              AND games.user_id = ?
                             ORDER BY games.game_date DESC");
-    $stmt->bind_param("ii", $sport_id, $user_id);
+    $stmt->bind_param("iii", $sport_id, $sport_id, $user_id);
     $stmt->execute();
     $result_games = $stmt->get_result();
     $prefill_team_a = $scheduled_match ? $scheduled_match['team_a'] : '';
