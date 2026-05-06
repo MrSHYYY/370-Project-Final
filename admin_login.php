@@ -34,15 +34,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="auth-page admin-auth-page">
+    <h1 class="auth-page-title">Welcome to One Scoreboard</h1>
     <div class="login-container">
-        <h2>Admin Login</h2>
+        <div class="auth-header">
+            <h2>Admin Login</h2>
+        </div>
         <?php if (isset($error)) { echo "<p class='error'>" . htmlspecialchars($error) . "</p>"; } ?>
         <form method="POST" action="admin_login.php">
-            <input type="text" name="username" placeholder="Admin Username" required>
-            <input type="password" name="password" placeholder="Admin Password" required>
+            <label for="admin-username">Name</label>
+            <input type="text" id="admin-username" name="username" placeholder="Enter admin name" required>
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" name="password" placeholder="Enter admin password" required>
             <button type="submit">Login as Admin</button>
         </form>
-        <p><a href="login.php">Back to User Login</a></p>
+        <p class="auth-switch">Back to <a href="login.php">User Login</a></p>
     </div>
 </body>
 </html>

@@ -14,7 +14,7 @@ if (isset($_SESSION['username'])) {
     <title>Scoreboard Home</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="home-page">
     <div class="home-container">
         <header>
             <h1>Welcome to the Sports Scoreboard</h1>

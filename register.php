@@ -43,20 +43,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <a href="logout.php" class="logout-btn">Logout</a>
         </div>
     <?php } ?>
+    <h1 class="auth-page-title">Welcome to One Scoreboard</h1>
     <div class="register-container">
         <div class="auth-header">
-            <p class="auth-kicker">Scoreboard</p>
-            <h2>Create Account</h2>
-            <p>Join the scoreboard and start tracking your match results.</p>
+            <h2>Create an account</h2>
         </div>
         <?php if (isset($error)) { echo "<p class='error'>$error</p>"; } ?>
         <form method="POST" action="register.php">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
+            <label for="signup-username">Name</label>
+            <input type="text" id="signup-username" name="username" placeholder="Enter your name" required>
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" name="password" placeholder="Enter your password" required>
             <button type="submit">Sign Up</button>
         </form>
         <div class="signup-actions">
-            <a href="login.php" class="dashboard-action-btn">Login Instead</a>
+            <a href="admin_login.php" class="dashboard-action-btn">Admin Login</a>
+            <p class="auth-switch">Already have an account? <a href="login.php">Log in</a></p>
         </div>
     </div>
 </body>
