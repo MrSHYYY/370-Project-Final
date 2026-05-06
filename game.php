@@ -329,9 +329,34 @@ if (isset($_GET['sport_id'])) {
     $is_cricket = $sport_name === 'cricket';
     $is_football = $sport_name === 'football';
     $max_players = $is_cricket ? 12 : 16;
+    $scheduled_match = null;
+    $scheduled_match_id = isset($_GET['schedule_id']) ? (int) $_GET['schedule_id'] : 0;
+
+    if ($scheduled_match_id > 0) {
+        $stmt = $conn->prepare("SELECT scheduled_matches.*, team_a.team_name AS team_a, team_b.team_name AS team_b
+                                FROM scheduled_matches
+                                INNER JOIN teams AS team_a ON scheduled_matches.team_a_id = team_a.team_id
+                                INNER JOIN teams AS team_b ON scheduled_matches.team_b_id = team_b.team_id
+                                WHERE scheduled_matches.schedule_id = ?
+                                  AND scheduled_matches.user_id = ?
+                                  AND scheduled_matches.sport_id = ?
+                                  AND scheduled_matches.status = 'scheduled'
+                                LIMIT 1");
+        $stmt->bind_param("iii", $scheduled_match_id, $user_id, $sport_id);
+        $stmt->execute();
+        $scheduled_match = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$scheduled_match) {
+            $_SESSION['error_message'] = "Scheduled match not found or already completed.";
+            header("Location: scheduled_matches.php");
+            exit();
+        }
+    }
 
     // Handle score submission
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
+        $submitted_schedule_id = (int) ($_POST['schedule_id'] ?? 0);
         $team_a_name = $_POST['team_a'];
         $team_b_name = $_POST['team_b'];
         $team_a_score = (int) $_POST['team_a_score'];
@@ -519,6 +544,21 @@ if (isset($_GET['sport_id'])) {
             savePastScore($conn, $game_id, $user_id, $sport_id, $team_a_id, $team_b_id);
             savePlayerScores($conn, $game_id, $team_a_id, $team_a_players, $is_cricket);
             savePlayerScores($conn, $game_id, $team_b_id, $team_b_players, $is_cricket);
+
+            if ($submitted_schedule_id > 0) {
+                $stmt_update_schedule = $conn->prepare("UPDATE scheduled_matches
+                                                        SET status = 'completed', game_id = ?
+                                                        WHERE schedule_id = ?
+                                                          AND user_id = ?
+                                                          AND sport_id = ?
+                                                          AND team_a_id = ?
+                                                          AND team_b_id = ?
+                                                          AND status = 'scheduled'");
+                $stmt_update_schedule->bind_param("iiiiii", $game_id, $submitted_schedule_id, $user_id, $sport_id, $team_a_id, $team_b_id);
+                $stmt_update_schedule->execute();
+                $stmt_update_schedule->close();
+            }
+
             $_SESSION['message'] = "Match score added successfully!";
         } else {
             $_SESSION['error_message'] = "Error: " . $conn->error;
@@ -539,6 +579,9 @@ if (isset($_GET['sport_id'])) {
     $stmt->bind_param("ii", $sport_id, $user_id);
     $stmt->execute();
     $result_games = $stmt->get_result();
+    $prefill_team_a = $scheduled_match ? $scheduled_match['team_a'] : '';
+    $prefill_team_b = $scheduled_match ? $scheduled_match['team_b'] : '';
+    $prefill_game_date = $scheduled_match ? date('Y-m-d\TH:i', strtotime($scheduled_match['match_date'])) : '';
 
 } else {
     // Redirect to dashboard if no sport_id is provided
@@ -554,7 +597,7 @@ if (isset($_GET['sport_id'])) {
     <title><?php echo htmlspecialchars($sport['sport_name']); ?> Matches</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="game-page">
     <div class="game-container">
         <header>
             <h1><?php echo htmlspecialchars($sport['sport_name']); ?> Matches</h1>
@@ -565,7 +608,8 @@ if (isset($_GET['sport_id'])) {
             </div>
         </header>
 
-        <div class="games-list">
+        <div class="match-entry-layout">
+        <div class="games-list completed-matches-panel">
             <h2>Completed Matches</h2>
             <?php
             if ($result_games->num_rows > 0) {
@@ -602,9 +646,15 @@ if (isset($_GET['sport_id'])) {
             ?>
         </div>
 
-        <div class="score-form" id="team-submit">
+        <div class="score-form match-entry-panel" id="team-submit">
             <h2>Enter Match Scores</h2>
-            <form method="POST" action="game.php?sport_id=<?php echo $sport_id; ?>#team-submit">
+            <?php if ($scheduled_match) { ?>
+                <p class="success">Entering score for scheduled match: <?php echo htmlspecialchars($prefill_team_a); ?> vs <?php echo htmlspecialchars($prefill_team_b); ?>.</p>
+            <?php } ?>
+            <form method="POST" action="game.php?sport_id=<?php echo $sport_id; ?><?php echo $scheduled_match ? '&schedule_id=' . htmlspecialchars($scheduled_match_id) : ''; ?>#team-submit">
+                <?php if ($scheduled_match) { ?>
+                    <input type="hidden" name="schedule_id" value="<?php echo htmlspecialchars($scheduled_match_id); ?>">
+                <?php } ?>
                 <?php if ($is_cricket) { ?>
                     <fieldset class="match-format-section">
                         <legend>Match Format</legend>
@@ -630,7 +680,7 @@ if (isset($_GET['sport_id'])) {
                         <legend>Team A</legend>
 
                         <label for="team_a">Team Name</label>
-                        <input type="text" id="team_a" name="team_a" placeholder="Enter Team A Name" required>
+                        <input type="text" id="team_a" name="team_a" placeholder="Enter Team A Name" value="<?php echo htmlspecialchars($prefill_team_a); ?>" required>
 
                         <?php if ($is_cricket) { ?>
                             <label for="team_a_score">Runs</label>
@@ -651,7 +701,7 @@ if (isset($_GET['sport_id'])) {
                         <legend>Team B</legend>
 
                         <label for="team_b">Team Name</label>
-                        <input type="text" id="team_b" name="team_b" placeholder="Enter Team B Name" required>
+                        <input type="text" id="team_b" name="team_b" placeholder="Enter Team B Name" value="<?php echo htmlspecialchars($prefill_team_b); ?>" required>
 
                         <?php if ($is_cricket) { ?>
                             <label for="team_b_score">Runs</label>
@@ -671,7 +721,7 @@ if (isset($_GET['sport_id'])) {
                 </div>
 
                 <label for="game_date">Game Date</label>
-                <input type="datetime-local" id="game_date" name="game_date" required>
+                <input type="datetime-local" id="game_date" name="game_date" value="<?php echo htmlspecialchars($prefill_game_date); ?>" required>
 
                 <div class="player-score-section" data-max-players="<?php echo $max_players; ?>" data-sport="<?php echo $is_cricket ? 'cricket' : 'football'; ?>">
                     <h3>You can add player scores</h3>
@@ -712,6 +762,7 @@ if (isset($_GET['sport_id'])) {
                 echo "<p class='error'>$error_message</p>";
             }
             ?>
+        </div>
         </div>
     </div>
     <script>

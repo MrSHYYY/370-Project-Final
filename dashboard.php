@@ -48,9 +48,10 @@ $result = $conn->query($sql);
         </header>
         <div class="dashboard-layout">
             <aside class="dashboard-sidebar">
-                <h2>Features</h2>
+                <h2>Quick actions</h2>
                 <a href="past_scores.php" class="dashboard-action-btn">Watch Past Scores</a>
-                <div class="future-feature-space"></div>
+                <a href="individual_score.php" class="dashboard-action-btn">Individual Score</a>
+                <a href="scheduled_match.php" class="dashboard-action-btn">Scheduled Match</a>
             </aside>
 
             <div class="sports-list">
