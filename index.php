@@ -1,5 +1,4 @@
 <?php
-// index.php will act as the home page of your website.
 session_start();
 if (isset($_SESSION['username'])) {
     header("Location: dashboard.php");

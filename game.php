@@ -284,7 +284,6 @@ function renderPlayerScores($player_scores, $is_cricket) {
     echo "</tbody></table></div>";
 }
 
-// Check if the user is logged in
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit();
@@ -308,11 +307,9 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int) $_SESSION['user_id'];
 
-// Get sport_id from the URL
 if (isset($_GET['sport_id'])) {
     $sport_id = (int) $_GET['sport_id'];
 
-    // Fetch the selected sport's name
     $stmt = $conn->prepare("SELECT * FROM sports WHERE sport_id = ?");
     $stmt->bind_param("i", $sport_id);
     $stmt->execute();
@@ -355,7 +352,6 @@ if (isset($_GET['sport_id'])) {
         }
     }
 
-    // Handle score submission
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $submitted_schedule_id = (int) ($_POST['schedule_id'] ?? 0);
         $team_a_name = $_POST['team_a'];
@@ -514,7 +510,6 @@ if (isset($_GET['sport_id'])) {
         $team_a_id = getTeamId($conn, $sport_id, $team_a_name);
         $team_b_id = getTeamId($conn, $sport_id, $team_b_name);
 
-        // Insert the match scores into the database
         $stmt = $conn->prepare("INSERT INTO games (
                                     user_id, team_a_id, team_b_id,
                                     team_a_score, team_a_overs, team_a_wickets, team_a_extras,
@@ -568,7 +563,6 @@ if (isset($_GET['sport_id'])) {
         exit();
     }
 
-    // Fetch games for the selected sport
     $stmt = $conn->prepare("SELECT games.*, team_a.team_name AS team_a, team_b.team_name AS team_b
                             FROM games
                             LEFT JOIN teams AS team_a ON games.team_a_id = team_a.team_id
@@ -585,7 +579,6 @@ if (isset($_GET['sport_id'])) {
     $prefill_game_date = $scheduled_match ? date('Y-m-d\TH:i', strtotime($scheduled_match['match_date'])) : '';
 
 } else {
-    // Redirect to dashboard if no sport_id is provided
     header("Location: dashboard.php");
     exit();
 }

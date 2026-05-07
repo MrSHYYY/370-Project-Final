@@ -1,21 +1,17 @@
 <?php
-// Register new users
 session_start();
 include('includes/db.php');
 
-// Check if form is submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
     $password = $_POST['password'];
     
-    // Check if username already exists
     $sql = "SELECT * FROM users WHERE username='$username'";
     $result = $conn->query($sql);
     
     if ($result->num_rows > 0) {
         $error = "Username already taken";
     } else {
-        // Insert new user into the database
         $sql = "INSERT INTO users (username, password) VALUES ('$username', '$password')";
         
         if ($conn->query($sql) === TRUE) {
