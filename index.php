@@ -16,7 +16,7 @@ if (isset($_SESSION['username'])) {
 <body class="home-page">
     <div class="home-container">
         <header>
-            <h1>Welcome to the Sports Scoreboard</h1>
+            <h1>Welcome to ONE Sports Scoreboard</h1>
             <?php if (isset($_SESSION['username'])) { ?>
                 <a href="logout.php" class="logout-btn">Logout</a>
             <?php } ?>
