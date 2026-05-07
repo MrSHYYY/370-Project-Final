@@ -1,7 +1,8 @@
-One Scoreboard
+* One Scoreboard
+
 One Scoreboard is a web-based sports score management system built with PHP and MySQL. It allows users to record match scores, track team and player performance, schedule upcoming matches, view past results, and compare teams through head-to-head records.
 
-Features
+* Features
 User registration and login
 Admin login and dashboard
 Sports selection dashboard
